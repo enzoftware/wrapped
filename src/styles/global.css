@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,800;0,900;1,500;1,600;1,700;1,800;1,900&family=Inter:wght@400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+/* ── Design tokens ────────────────────────────────────────────── */
+:root {
+  --bg:        #fdf6f0;   /* warm cream */
+  --bg-card:   #fff8f5;   /* blush card */
+  --bg-card2:  #fff5f0;   /* slightly deeper card */
+  --ink:       #2d1a1f;   /* dark wine */
+  --sub:       rgba(45,26,31,0.55);
+  --faint:     rgba(45,26,31,0.30);
+  --hair:      rgba(45,26,31,0.10);
+  --accent:    #d4687a;   /* rose */
+  --accent-hi: #b5286a;   /* deep rose */
+  --enzo:      #5b7fd4;   /* soft blue */
+  --katy:      #c84080;   /* rose pink */
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.font-display { font-family: 'Playfair Display', serif; }
+.font-mono-custom { font-family: 'Roboto Mono', monospace; }
+
+/* ── Keyframes ────────────────────────────────────────────────── */
+@keyframes ekFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%       { transform: translateY(-14px) rotate(8deg); }
+}
+@keyframes ekBob {
+  0%, 100% { transform: translateY(0); opacity: 0.45; }
+  50%       { transform: translateY(6px); opacity: 0.9; }
+}
+@keyframes ekPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.12); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.animate-float {
+  animation: ekFloat var(--duration, 8s) ease-in-out var(--delay, 0s) infinite;
+}
+.animate-bob   { animation: ekBob   1.8s ease-in-out infinite; }
+.animate-pulse-heart { animation: ekPulse 1.6s ease-in-out infinite; }
+
+/* ── Scrollbar hide ───────────────────────────────────────────── */
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }

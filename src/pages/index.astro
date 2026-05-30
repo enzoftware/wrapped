@@ -1,0 +1,36 @@
+---
+import '../styles/global.css';
+import Hero from '../components/Hero';
+import GeneralStats from '../components/stats/GeneralStats';
+import WrapSection from '../components/wrap/WrapSection';
+import { globalStats, yearStats } from '../data/stats';
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Enzo &amp; Katy Wrap · 2020–2026</title>
+    <meta name="description" content="Seis años de conversación. Su historia en números." />
+    <meta property="og:title" content="Enzo & Katy Wrap · 2020–2026" />
+    <meta property="og:description" content="Seis años de conversación. Su historia en números." />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <Hero client:load />
+    <GeneralStats client:visible global={globalStats} years={yearStats} />
+    <WrapSection client:visible years={yearStats} />
+
+    <!-- Footer -->
+    <footer style="background: var(--bg); border-top: 1px solid rgba(45,26,31,0.08); text-align: center; padding: 48px 24px;">
+      <div class="font-mono-custom" style="font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--faint); margin-bottom: 10px;">
+        Enzo &amp; Katy · {new Date().getFullYear()}
+      </div>
+      <p class="font-display italic" style="font-size: 22px; color: var(--sub); margin: 0;">
+        132,105 mensajes. Un solo amor. ♥
+      </p>
+    </footer>
+  </body>
+</html>
