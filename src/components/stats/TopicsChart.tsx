@@ -1,6 +1,6 @@
 'use client';
 import { useRef } from 'react';
-import { useInView, motion } from 'framer-motion';
+import { useInView, motion } from 'motion/react';
 import type { Topic } from '../../lib/types';
 
 interface TopicsChartProps {
