@@ -1,180 +1,234 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, animate, motion, useInView, useMotionValue, type AnimationPlaybackControls } from 'motion/react';
 import type { YearStats } from '../../lib/types';
-import { WrapSlideInner } from './WrapSlide';
-import FloatingHearts from '../FloatingHearts';
+import { EASE } from '../../lib/anim';
+import WrapSlide from './WrapSlide';
+import YearAmbient from './YearAmbient';
+import { SLIDE_LABELS, type SlideType } from './themes';
 
 interface YearWrapProps {
   year: YearStats;
-  isActive: boolean;
+  slides: SlideType[];
+  slideIndex: number;
+  direction: number;
+  paused: boolean;
+  onNext: () => void;
+  onPrev: () => void;
+  onGoTo: (index: number) => void;
+  onTogglePause: () => void;
 }
 
-type SlideType = 'cover' | 'messages' | 'love' | 'media' | 'topics' | 'topDay' | 'highlight' | 'closing';
+const SLIDE_SECONDS = 7;
+const HOLD_MS = 180;
+const SWIPE_PX = 48;
 
-function getSlides(year: YearStats): SlideType[] {
-  const base: SlideType[] = ['cover', 'messages', 'love', 'media', 'topics', 'topDay', 'highlight'];
-  if (year.year === 2026) return [...base, 'closing'];
-  return base;
-}
-
-const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
-
+// A shallow "cube" turn between slides, like flipping through stories.
 const slideVariants = {
-  enter: (dir: number) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0.4 }),
-  center: { x: 0, opacity: 1, transition: { duration: 0.42, ease: EASE } },
-  exit: (dir: number) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0.4, transition: { duration: 0.32, ease: EASE } }),
+  enter: (dir: number) => ({ x: dir > 0 ? '60%' : '-60%', rotateY: dir > 0 ? -28 : 28, opacity: 0 }),
+  center: { x: 0, rotateY: 0, opacity: 1, transition: { duration: 0.55, ease: EASE } },
+  exit: (dir: number) => ({ x: dir > 0 ? '-45%' : '45%', rotateY: dir > 0 ? 24 : -24, opacity: 0, transition: { duration: 0.4, ease: EASE } }),
 };
 
-export default function YearWrap({ year, isActive }: YearWrapProps) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const slides = getSlides(year);
-  const touchStartX = useRef<number | null>(null);
-
-  const goTo = useCallback((idx: number, dir: number) => {
-    setDirection(dir);
-    setCurrentSlide(idx);
+function usePageVisible() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const onChange = () => setVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', onChange);
+    return () => document.removeEventListener('visibilitychange', onChange);
   }, []);
+  return visible;
+}
 
-  const next = useCallback(() => {
-    if (currentSlide < slides.length - 1) goTo(currentSlide + 1, 1);
-  }, [currentSlide, slides.length, goTo]);
+export default function YearWrap({
+  year, slides, slideIndex, direction, paused, onNext, onPrev, onGoTo, onTogglePause,
+}: YearWrapProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { amount: 0.55 });
+  const pageVisible = usePageVisible();
+  const [held, setHeld] = useState(false);
 
-  const prev = useCallback(() => {
-    if (currentSlide > 0) goTo(currentSlide - 1, -1);
-  }, [currentSlide, goTo]);
+  // ── Autoplay: a motion value drives the active progress bar ────────────
+  const progress = useMotionValue(0);
+  const controls = useRef<AnimationPlaybackControls | null>(null);
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
+  const running = inView && pageVisible && !held && !paused;
+  const slideKey = `${year.year}-${slideIndex}`;
 
   useEffect(() => {
-    setCurrentSlide(0);
-    setDirection(1);
-  }, [year.year]);
+    progress.set(0);
+    const c = animate(progress, 1, {
+      duration: SLIDE_SECONDS,
+      ease: 'linear',
+      onComplete: () => onNextRef.current(),
+    });
+    c.pause();
+    controls.current = c;
+    return () => c.stop();
+  }, [slideKey, progress]);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (running) controls.current?.play();
+    else controls.current?.pause();
+  }, [running, slideKey]);
+
+  // ── Keyboard, only while the story is on screen ─────────────────────────
+  useEffect(() => {
+    if (!inView) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') next();
-      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowRight') { e.preventDefault(); onNext(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); onPrev(); }
+      if (e.key === ' ' && document.activeElement === document.body) { e.preventDefault(); onTogglePause(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isActive, next, prev]);
+  }, [inView, onNext, onPrev, onTogglePause]);
 
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 48) dx < 0 ? next() : prev();
-    touchStartX.current = null;
+  // ── Gestures: tap sides, swipe, press-and-hold to pause ─────────────────
+  const gesture = useRef<{ x: number; y: number; t: number; timer: number } | null>(null);
+
+  const endGesture = () => {
+    if (gesture.current) window.clearTimeout(gesture.current.timer);
+    gesture.current = null;
+    setHeld(false);
   };
 
-  const slideType = slides[currentSlide];
-  const grad = `linear-gradient(165deg, ${year.grad[0]}, ${year.grad[1]})`;
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const timer = window.setTimeout(() => setHeld(true), HOLD_MS);
+    gesture.current = { x: e.clientX, y: e.clientY, t: performance.now(), timer };
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = gesture.current;
+    if (!g) return;
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    const dt = performance.now() - g.t;
+    endGesture();
+
+    if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy)) {
+      dx < 0 ? onNext() : onPrev();
+    } else if (dt < 300 && Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      (e.clientX - rect.left) / rect.width < 0.3 ? onPrev() : onNext();
+    }
+  };
+
+  const bg = `linear-gradient(165deg, ${year.grad[0]} 0%, ${year.grad[1]} 100%)`;
 
   return (
-    <div
-      style={{ position: 'relative', overflow: 'hidden', width: '100%', minHeight: 680, background: grad, userSelect: 'none' }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+    <motion.div
+      ref={rootRef}
+      className="relative w-full h-full overflow-hidden select-none"
+      initial={false}
+      animate={{ background: bg }}
+      transition={{ duration: 0.8, ease: EASE }}
+      style={{ background: bg, borderRadius: 'inherit' }}
+      role="region"
+      aria-roledescription="historia"
+      aria-label={`Wrap ${year.year} — ${SLIDE_LABELS[slides[slideIndex]]}, ${slideIndex + 1} de ${slides.length}`}
     >
-      {/* subtle floating hearts */}
-      <div style={{ position: 'absolute', inset: 0, opacity: 0.35, pointerEvents: 'none' }}>
-        <FloatingHearts color={year.color} n={8} />
-      </div>
+      {/* per-year ambient layer, cross-fading between years */}
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={year.year}
+          className="absolute inset-0 pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <YearAmbient year={year} />
+          <div className="absolute inset-0" style={{ background: `radial-gradient(110% 65% at 50% 25%, ${year.color}1c, transparent 60%)` }} />
+        </motion.div>
+      </AnimatePresence>
 
-      {/* year color radial glow */}
-      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(110% 65% at 50% 25%, ${year.color}18, transparent 55%)`, pointerEvents: 'none' }} />
-
-      {/* Story progress bars */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, padding: '16px 16px 0' }}>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-          {slides.map((_, i) => (
+      {/* ── Chrome: progress bars + header ── */}
+      <motion.div
+        className="absolute top-0 left-0 right-0 z-30 px-4 pt-4"
+        animate={{ opacity: held ? 0.25 : 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        <div className="flex gap-1 mb-3">
+          {slides.map((s, i) => (
             <button
-              key={i}
-              onClick={() => goTo(i, i > currentSlide ? 1 : -1)}
-              style={{
-                flex: 1, height: 3, borderRadius: 2, border: 'none', padding: 0, cursor: 'pointer',
-                background: i <= currentSlide ? year.color : 'rgba(45,26,31,0.18)',
-                boxShadow: i === currentSlide ? `0 0 6px ${year.color}` : 'none',
-                transition: 'background 0.2s',
-              }}
-            />
+              key={`${year.year}-${s}`}
+              onClick={() => onGoTo(i)}
+              aria-label={`Ir a ${SLIDE_LABELS[s]}`}
+              className="relative flex-1 h-[3px] rounded-sm overflow-hidden cursor-pointer border-0 p-0 before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']"
+              style={{ background: 'rgba(45,26,31,0.16)' }}
+            >
+              {i < slideIndex && <span className="absolute inset-0" style={{ background: year.color }} />}
+              {i === slideIndex && (
+                <motion.span
+                  className="absolute inset-0 origin-left"
+                  style={{ background: year.color, scaleX: progress, boxShadow: `0 0 6px ${year.color}` }}
+                />
+              )}
+            </button>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontFamily: '"Roboto Mono", monospace', fontSize: 10.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(45,26,31,0.5)' }}>
-            Enzo &amp; Katy
+        <div className="flex justify-between items-center">
+          <span className="font-mono-custom text-[10.5px] tracking-[0.2em] uppercase" style={{ color: 'rgba(45,26,31,0.5)' }}>
+            Enzo &amp; Katy · {SLIDE_LABELS[slides[slideIndex]]}
           </span>
-          <span style={{ fontFamily: '"Roboto Mono", monospace', fontSize: 11, fontWeight: 600, color: year.color }}>
-            {year.year}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono-custom text-[11px] font-semibold" style={{ color: year.color }}>{year.year}</span>
+            <motion.button
+              onClick={onTogglePause}
+              whileTap={{ scale: 0.85 }}
+              aria-label={paused ? 'Reanudar' : 'Pausar'}
+              className="grid place-items-center w-7 h-7 rounded-full border-0 cursor-pointer text-[11px]"
+              style={{ background: 'rgba(45,26,31,0.08)', color: 'var(--ink)' }}
+            >
+              {paused ? '▶' : '❚❚'}
+            </motion.button>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Slide content */}
-      <div style={{ position: 'absolute', inset: 0, paddingTop: 72, paddingBottom: 52, paddingLeft: 24, paddingRight: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <AnimatePresence initial={false} custom={direction} mode="wait">
+      {/* ── Slides ── */}
+      <div
+        className="absolute inset-0 z-10"
+        style={{ perspective: 1200, touchAction: 'pan-y' }}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={endGesture}
+        onPointerLeave={endGesture}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <AnimatePresence initial={false} custom={direction}>
           <motion.div
-            key={`${year.year}-${currentSlide}`}
+            key={slideKey}
             custom={direction}
             variants={slideVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%' }}
+            className="absolute inset-0 flex flex-col px-6 pt-[78px] pb-10"
+            style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
           >
-            <WrapSlideInner type={slideType} data={year} isActive={isActive} />
+            <WrapSlide type={slides[slideIndex]} data={year} />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Desktop nav arrows */}
-      {currentSlide > 0 && (
-        <button
-          onClick={prev}
-          className="hidden md:flex"
-          style={{
-            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20,
-            width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer',
-            background: 'rgba(45,26,31,0.12)', backdropFilter: 'blur(8px)',
-            boxShadow: 'inset 0 0 0 1px rgba(45,26,31,0.15)',
-            alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--ink)',
-          }}
-        >‹</button>
-      )}
-      {currentSlide < slides.length - 1 && (
-        <button
-          onClick={next}
-          className="hidden md:flex"
-          style={{
-            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 20,
-            width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer',
-            background: 'rgba(45,26,31,0.12)', backdropFilter: 'blur(8px)',
-            boxShadow: 'inset 0 0 0 1px rgba(45,26,31,0.15)',
-            alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--ink)',
-          }}
-        >›</button>
-      )}
-
-      {/* Mobile tap zones */}
-      <div className="md:hidden" style={{ position: 'absolute', left: 0, top: 72, bottom: 52, width: '35%', zIndex: 10, cursor: currentSlide > 0 ? 'pointer' : 'default' }} onClick={prev} />
-      <div className="md:hidden" style={{ position: 'absolute', right: 0, top: 72, bottom: 52, width: '35%', zIndex: 10, cursor: currentSlide < slides.length - 1 ? 'pointer' : 'default' }} onClick={next} />
-
-      {/* Dot indicators */}
-      <div style={{ position: 'absolute', bottom: 14, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 8, zIndex: 20 }}>
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i, i > currentSlide ? 1 : -1)}
-            style={{
-              width: 6, height: 6, borderRadius: '50%', border: 'none', padding: 0, cursor: 'pointer',
-              background: i === currentSlide ? year.color : 'rgba(45,26,31,0.2)',
-              transform: i === currentSlide ? 'scale(1.5)' : 'scale(1)',
-              transition: 'all 0.2s',
-            }}
-          />
-        ))}
-      </div>
-    </div>
+      {/* hold-to-pause indicator */}
+      <AnimatePresence>
+        {(held || paused) && (
+          <motion.div
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 font-mono-custom text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 rounded-full pointer-events-none"
+            style={{ background: 'rgba(45,26,31,0.75)', color: '#fff' }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+          >
+            en pausa
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

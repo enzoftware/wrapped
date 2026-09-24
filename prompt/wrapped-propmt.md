@@ -17,7 +17,8 @@ Una web app llamada **"Enzo & Katy Wrap"** que sintetiza 6 años de conversació
 Astro 6 + React islands   ← framework principal (no Next.js)
 TypeScript (strict)
 Tailwind CSS v4
-Framer Motion 12           ← todas las animaciones
+motion (motion.dev) 13     ← layout, presencia, gestos, reveals
+anime.js 4                 ← animaciones temáticas, partículas, texto, SVG
 CSS custom properties      ← design tokens en :root
 Bun                        ← package manager (no npm)
 ```
