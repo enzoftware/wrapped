@@ -56,6 +56,18 @@ body {
 .animate-bob   { animation: ekBob   1.8s ease-in-out infinite; }
 .animate-pulse-heart { animation: ekPulse 1.6s ease-in-out infinite; }
 
+/* Elements that anime.js reveals start hidden once JS is on, so the
+   server-rendered HTML doesn't flash before hydration. Reduced motion
+   users skip the animations entirely and always see them. */
+@media (prefers-reduced-motion: no-preference) {
+  .js .pre-anim { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-bob, .animate-pulse-heart { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
 /* ── Scrollbar hide ───────────────────────────────────────────── */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
