@@ -1,7 +1,9 @@
 'use client';
 import { useRef } from 'react';
-import { useInView, motion } from 'framer-motion';
+import { useInView, motion } from 'motion/react';
+import { animate, stagger, utils } from 'animejs';
 import type { GlobalStats } from '../../lib/types';
+import { useAnimeInView } from '../../lib/anim';
 
 interface PlansPanelProps {
   global: GlobalStats;
@@ -12,8 +14,18 @@ export default function PlansPanel({ global }: PlansPanelProps) {
   const isInView = useInView(barRef, { once: true, margin: '-10% 0px' });
   const maxPlanes = Math.max(...global.planesPerYear.map((p) => p.count));
 
+  // Outing emojis hop one after another, like stops on a trip; weekends glow.
+  const root = useAnimeInView<HTMLDivElement>(() => {
+    utils.set('.pl-emoji', { opacity: 0, y: -14 });
+    return [
+      animate('.pl-emoji', { opacity: 1, y: [-14, 0], duration: 700, delay: stagger(140, { start: 200 }), ease: 'outBounce', autoplay: false }),
+      animate('.pl-hop', { y: [0, -6, 0], duration: 500, delay: stagger(160, { start: 2200 }), loop: true, loopDelay: 2600, ease: 'outQuad', autoplay: false }),
+      animate('.pl-weekend', { boxShadow: ['0 0 0px rgba(212,104,122,0)', '0 0 16px rgba(212,104,122,0.55)'], duration: 1200, delay: 1200, loop: true, alternate: true, ease: 'inOutSine', autoplay: false }),
+    ];
+  });
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+    <div ref={root} className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12">
 
       {/* outings breakdown */}
       <div>
@@ -30,7 +42,7 @@ export default function PlansPanel({ global }: PlansPanelProps) {
               <div key={o.name}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: i === 0 ? 700 : 500, color: 'var(--ink)' }}>
-                    <span style={{ fontSize: 18 }}>{o.emoji}</span>
+                    <span className="pl-emoji" style={{ fontSize: 18, display: 'inline-block' }}><span className="pl-hop" style={{ display: 'inline-block' }}>{o.emoji}</span></span>
                     {o.name}
                   </span>
                   <span style={{ fontFamily: '"Roboto Mono", monospace', fontSize: 11, color: 'var(--accent)' }}>
@@ -93,6 +105,7 @@ export default function PlansPanel({ global }: PlansPanelProps) {
             return (
               <div key={d.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                 <motion.div
+                  className={isWeekend ? 'pl-weekend' : undefined}
                   initial={{ height: 0 }}
                   whileInView={{ height: (d.count / max) * 80 }}
                   viewport={{ once: true, margin: '-10%' }}
