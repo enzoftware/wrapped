@@ -3,6 +3,8 @@ import '../styles/global.css';
 import Hero from '../components/Hero';
 import GeneralStats from '../components/stats/GeneralStats';
 import WrapSection from '../components/wrap/WrapSection';
+import MusicPlayer from '../components/music/MusicPlayer';
+import IntroSplash from '../components/music/IntroSplash';
 import { globalStats, yearStats } from '../data/stats';
 ---
 
@@ -12,7 +14,10 @@ import { globalStats, yearStats } from '../data/stats';
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#fdf6f0" />
-    <script is:inline>document.documentElement.classList.add('js');</script>
+    <script is:inline>
+      document.documentElement.classList.add('js');
+      try { if (sessionStorage.getItem('ek-intro-seen')) document.documentElement.classList.add('intro-seen'); } catch (e) {}
+    </script>
     <meta name="generator" content={Astro.generator} />
     <title>Enzo &amp; Katy Wrap · 2020–2026</title>
     <meta name="description" content="Seis años de conversación. Su historia en números." />
@@ -34,5 +39,8 @@ import { globalStats, yearStats } from '../data/stats';
         132,105 mensajes. Un solo amor. ♥
       </p>
     </footer>
+
+    <MusicPlayer client:load />
+    <IntroSplash client:load />
   </body>
 </html>

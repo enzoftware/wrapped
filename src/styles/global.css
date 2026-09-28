@@ -45,6 +45,10 @@ body {
   0%, 100% { transform: scale(1); }
   50%       { transform: scale(1.12); }
 }
+@keyframes ekGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212,104,122,0.45); }
+  50%       { box-shadow: 0 0 0 10px rgba(212,104,122,0); }
+}
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
@@ -67,6 +71,10 @@ body {
   .animate-float, .animate-bob, .animate-pulse-heart { animation: none; }
   html { scroll-behavior: auto; }
 }
+
+/* Intro splash: hidden before paint on repeat visits; locks scroll while open. */
+.intro-seen .intro-splash { display: none; }
+.intro-open body { overflow: hidden; }
 
 /* ── Scrollbar hide ───────────────────────────────────────────── */
 ::-webkit-scrollbar { display: none; }
