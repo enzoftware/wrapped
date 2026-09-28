@@ -5,6 +5,7 @@ import { animate, createTimeline, createDrawable, splitText, stagger, utils } fr
 import Bokeh from './Bokeh';
 import FloatingHearts from './FloatingHearts';
 import { EASE, useAnime } from '../lib/anim';
+import { whenIntroDone } from '../lib/music';
 
 const HEART_PATH = 'M50 86 C22 66 6 50 6 32 C6 18 17 8 30 8 C39 8 46 13 50 21 C54 13 61 8 70 8 C83 8 94 18 94 32 C94 50 78 66 50 86 Z';
 
@@ -33,7 +34,8 @@ export default function Hero() {
     utils.set(split.words, { whiteSpace: 'nowrap' });
     utils.set('.hero-bubble', { opacity: 0, scale: 0.6 });
 
-    createTimeline({ defaults: { ease: 'outExpo' } })
+    // Held until the intro splash is dismissed, so the entrance is seen.
+    const intro = createTimeline({ autoplay: false, defaults: { ease: 'outExpo' } })
       .add(heart, { draw: ['0 0', '0 1'], duration: 1400, ease: 'inOutSine' }, 0)
       .add('.hero-heart path', { fillOpacity: [0, 0.14], duration: 500 }, 1100)
       .add('.hero-eyebrow', { opacity: 1, y: 0, duration: 700 }, 200)
@@ -50,7 +52,8 @@ export default function Hero() {
       loop: true, alternate: true, ease: 'inOutSine',
     });
 
-    return () => split.revert();
+    const stop = whenIntroDone(() => intro.play());
+    return () => { stop(); split.revert(); };
   });
 
   return (
