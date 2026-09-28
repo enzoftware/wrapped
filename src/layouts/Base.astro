@@ -1,0 +1,54 @@
+---
+import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
+import MusicPlayer from '../components/music/MusicPlayer';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Seis años de conversación. Su historia en números.' } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#fdf6f0" />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <ClientRouter />
+  </head>
+  <body>
+    <div id="page" transition:animate="fade">
+      <slot />
+    </div>
+
+    <!-- Lives outside #page and is never swapped, so the Spotify embed (and the song) survives navigation. -->
+    <MusicPlayer client:load />
+
+    <script>
+      import { swapFunctions } from 'astro:transitions/client';
+
+      // Swap only #page instead of the whole <body>. Moving an iframe in the DOM
+      // reloads it (Safari has no moveBefore), which would stop the music.
+      document.addEventListener('astro:before-swap', (e) => {
+        e.swap = () => {
+          swapFunctions.deselectScripts(e.newDocument);
+          swapFunctions.swapHeadElements(e.newDocument);
+          const restoreFocus = swapFunctions.saveFocus();
+          const next = e.newDocument.getElementById('page');
+          if (next) document.getElementById('page')?.replaceWith(next);
+          restoreFocus();
+        };
+      });
+    </script>
+  </body>
+</html>

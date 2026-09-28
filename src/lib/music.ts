@@ -1,4 +1,4 @@
-// Shared music state across Astro islands (Hero, IntroSplash, MusicPlayer are
+// Shared music state across Astro islands (WrapSection, IntroSplash, MusicPlayer are
 // separate React roots, but share this module instance on the page).
 import { isWebKitRestricted, type SpotifyEmbedController, type SpotifyPlaybackState } from './spotify';
 
@@ -8,8 +8,6 @@ const bus = new EventTarget();
 let controller: SpotifyEmbedController | null = null;
 let playback: SpotifyPlaybackState | null = null;
 let introDone = false;
-
-export const INTRO_KEY = 'ek-intro-seen';
 
 /* ── Controller + playback (fed by MusicPlayer) ───────────────────────── */
 
@@ -74,17 +72,23 @@ export function onOpenPlayer(cb: (reason: OpenReason) => void) {
   return () => bus.removeEventListener('open', handler);
 }
 
-/* ── Intro gate (IntroSplash → Hero) ──────────────────────────────────── */
+/* ── Intro gate (IntroSplash → WrapSection) ─────────────────────────────────── */
 
+// The splash shows on every full page load (the tap is what lets music start).
+// This flag lives as long as the page does, so client-side navigation back to
+// the wrap skips it; `intro-seen` on <html> hides the splash's server HTML.
 export function markIntroDone() {
   if (introDone) return;
   introDone = true;
+  document.documentElement.classList.add('intro-seen');
   bus.dispatchEvent(new Event('intro'));
 }
 
-/** Runs `cb` once the intro splash is gone (immediately if it never showed). */
+export const isIntroDone = () => introDone;
+
+/** Runs `cb` once the intro splash is gone (immediately if it already is). */
 export function whenIntroDone(cb: () => void) {
-  if (introDone || document.documentElement.classList.contains('intro-seen')) {
+  if (introDone) {
     cb();
     return () => {};
   }

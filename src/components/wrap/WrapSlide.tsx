@@ -551,6 +551,8 @@ function ClosingSlide({ y }: { y: YearStats }) {
       });
     });
 
+    animate('.cl-cta', { scale: [1, 1.04], duration: 1100, loop: true, alternate: true, ease: 'inOutSine', delay: 3200 });
+
     return () => split.revert();
   }, [y.year]);
 
@@ -581,6 +583,22 @@ function ClosingSlide({ y }: { y: YearStats }) {
       <div className="rv pre-anim" style={{ display: 'flex', gap: 6, marginTop: 18 }}>
         {yearStats.map((ys) => <span key={ys.year} title={String(ys.year)} style={{ fontSize: 18 }}>{ys.emoji}</span>)}
       </div>
+      {/* The way out of the wrap: on to the full stats. Pointer events stop here so
+          the story's tap-to-advance doesn't also fire. */}
+      <a
+        href="/stats"
+        className="rv pre-anim cl-cta"
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative', marginTop: 28, display: 'inline-flex', alignItems: 'center', gap: 10,
+          padding: '14px 26px', borderRadius: 999, textDecoration: 'none', fontWeight: 700, fontSize: 15,
+          color: '#fff', background: `linear-gradient(135deg, ${y.color}cc, ${y.color})`,
+          boxShadow: `0 10px 30px ${y.color}55`,
+        }}
+      >
+        Ver estadísticas <span aria-hidden style={{ fontSize: 17 }}>→</span>
+      </a>
     </div>
   );
 }
