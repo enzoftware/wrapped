@@ -72,9 +72,17 @@ body {
   html { scroll-behavior: auto; }
 }
 
-/* Intro splash: hidden before paint on repeat visits; locks scroll while open. */
-.intro-seen .intro-splash { display: none; }
+/* Intro splash: its server HTML stays hidden when navigating back to the wrap
+   (it only shows on full page loads); locks scroll while open. */
+.intro-seen .intro-splash:not(.is-leaving) { display: none; }
 .intro-open body { overflow: hidden; }
+
+/* Year track: a soft focus ring instead of the browser's box. */
+.year-track button:focus { outline: none; }
+.year-track button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
+
+/* The wrap is a full-screen stage: no page scroll, no pull-to-refresh. */
+html:has(.wrap-stage), html:has(.wrap-stage) body { overflow: hidden; overscroll-behavior: none; }
 
 /* ── Scrollbar hide ───────────────────────────────────────────── */
 ::-webkit-scrollbar { display: none; }
