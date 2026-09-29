@@ -1,10 +1,12 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import type { YearStats } from '../../lib/types';
 import { EASE } from '../../lib/anim';
+import { whenIntroDone } from '../../lib/music';
 import YearWrap from './YearWrap';
-import { SLIDE_LABELS, getSlides } from './themes';
+import YearAmbient from './YearAmbient';
+import { getSlides } from './themes';
 
 interface WrapSectionProps {
   years: YearStats[];
@@ -16,10 +18,27 @@ interface Position {
   dir: number;
 }
 
+// Survives client-side navigation, so coming back from /stats resumes where they left off.
+const START: Position = { yearIdx: 0, slideIdx: 0, dir: 1 };
+let lastPos = START;
+
+/**
+ * The whole screen is the story. On mobile the story is full-bleed; on wider
+ * screens it sits in a phone-shaped card over a full-screen stage that takes
+ * on the current year's colors, weather and number.
+ */
 export default function WrapSection({ years }: WrapSectionProps) {
-  const [pos, setPos] = useState<Position>({ yearIdx: 0, slideIdx: 0, dir: 1 });
+  // Render the server's starting point first (so hydration matches), then jump
+  // to the saved spot before paint. Slides only mount once `started`, below.
+  const [pos, setPos] = useState<Position>(START);
   const [paused, setPaused] = useState(false);
+  const [started, setStarted] = useState(false);
   const slidesFor = useCallback((i: number) => getSlides(i === years.length - 1), [years.length]);
+
+  useLayoutEffect(() => { if (lastPos !== START) setPos(lastPos); }, []);
+  useEffect(() => { lastPos = pos; }, [pos]);
+  // Hold the first story until the intro splash clears, so it plays in view.
+  useEffect(() => whenIntroDone(() => setStarted(true)), []);
 
   const current = years[pos.yearIdx];
   const slides = slidesFor(pos.yearIdx);
@@ -41,196 +60,79 @@ export default function WrapSection({ years }: WrapSectionProps) {
   const selectYear = useCallback((yearIdx: number) => setPos((p) => ({ yearIdx, slideIdx: 0, dir: yearIdx >= p.yearIdx ? 1 : -1 })), []);
   const togglePause = useCallback(() => setPaused((v) => !v), []);
 
-  // Keep the active pill centred in the mobile scroller (without scrolling the page).
-  const pillsRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const scroller = pillsRef.current;
-    const pill = scroller?.querySelector<HTMLElement>(`[data-year="${current.year}"]`);
-    if (!scroller || !pill) return;
-    scroller.scrollTo({ left: pill.offsetLeft - scroller.clientWidth / 2 + pill.offsetWidth / 2, behavior: 'smooth' });
-  }, [current.year]);
+  const stageBg = `linear-gradient(160deg, ${current.grad[0]} 0%, ${current.grad[1]} 100%)`;
 
   return (
-    <section id="wrap" className="py-14 lg:py-24" style={{ background: 'var(--bg)' }}>
-      <div className="mx-auto w-full max-w-[440px] lg:max-w-[1100px] px-3 sm:px-5 lg:px-8 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-16 xl:gap-24 lg:items-start">
-
-        {/* ── Left column (desktop) / header (mobile) ── */}
-        <div className="px-2 lg:px-0 lg:sticky lg:top-10">
+    <section id="wrap" className="wrap-stage fixed inset-0 overflow-hidden" style={{ background: 'var(--bg)' }}>
+      {/* ── Desktop stage: the year's colors, weather and a giant watermark ── */}
+      <motion.div
+        className="hidden md:block absolute inset-0"
+        initial={false}
+        animate={{ background: stageBg }}
+        transition={{ duration: 0.8, ease: EASE }}
+        style={{ background: stageBg }}
+        aria-hidden
+      >
+        <AnimatePresence initial={false}>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-10%' }}
-            transition={{ duration: 0.6, ease: EASE }}
-            className="mb-6 lg:mb-10"
+            key={current.year}
+            className="absolute inset-0 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
           >
-            <div className="font-mono-custom text-[11px] tracking-[0.26em] uppercase mb-2.5" style={{ color: 'var(--accent)' }}>
-              Tu historia
-            </div>
-            <h2 className="font-display italic m-0 leading-none text-[44px] lg:text-[64px]" style={{ fontWeight: 900, color: 'var(--ink)' }}>
-              Año por año
-            </h2>
-            <p className="hidden lg:block mt-5 text-[15px] leading-relaxed max-w-[420px]" style={{ color: 'var(--sub)' }}>
-              Seis capítulos, uno por año. Las historias avanzan solas — mantén presionado para pausar,
-              o usa <kbd className="font-mono-custom text-xs">←</kbd> <kbd className="font-mono-custom text-xs">→</kbd> y <kbd className="font-mono-custom text-xs">espacio</kbd>.
-            </p>
+            <YearAmbient year={current} />
+            <motion.div
+              className="absolute inset-0 grid place-items-center font-display italic font-black leading-none select-none"
+              style={{ fontSize: 'min(34vw, 60vh)', color: current.color, opacity: 0.09, letterSpacing: '-0.04em' }}
+              initial={{ y: pos.dir > 0 ? 60 : -60 }}
+              animate={{ y: 0 }}
+              transition={{ duration: 0.9, ease: EASE }}
+            >
+              {current.year}
+            </motion.div>
           </motion.div>
+        </AnimatePresence>
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(60% 70% at 50% 50%, transparent 40%, rgba(253,246,240,0.55) 100%)' }} />
 
-          {/* Mobile: horizontal year pills with a sliding highlight */}
-          <LayoutGroup id="year-pills">
-            <div
-              ref={pillsRef}
-              className="lg:hidden flex gap-2 overflow-x-auto pb-1 -mx-2 px-2 mb-3"
-              style={{ scrollbarWidth: 'none' }}
-              role="tablist"
-              aria-label="Años"
-            >
-              {years.map((y, i) => {
-                const active = i === pos.yearIdx;
-                return (
-                  <motion.button
-                    key={y.year}
-                    data-year={y.year}
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => selectYear(i)}
-                    whileTap={{ scale: 0.92 }}
-                    className="relative shrink-0 px-4 py-2 rounded-full border-0 cursor-pointer text-[13px] font-semibold"
-                    style={{ background: 'rgba(45,26,31,0.06)', color: active ? '#fff' : 'var(--sub)' }}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="year-pill-bg"
-                        className="absolute inset-0 rounded-full"
-                        style={{ background: y.color, boxShadow: `0 4px 16px ${y.color}55` }}
-                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                      />
-                    )}
-                    <span className="relative">{y.emoji} {y.year}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </LayoutGroup>
-
-          {/* Mobile: theme line */}
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={current.year}
-              className="lg:hidden text-[13px] leading-snug mb-4 min-h-[2.6em]"
-              style={{ color: 'var(--sub)' }}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.25 }}
-            >
-              {current.theme}
-            </motion.p>
-          </AnimatePresence>
-
-          {/* Desktop: expanded year rail with chapter list */}
-          <LayoutGroup id="year-rail">
-            <nav className="hidden lg:flex flex-col gap-2" aria-label="Años">
-              {years.map((y, i) => {
-                const active = i === pos.yearIdx;
-                return (
-                  <motion.div
-                    key={y.year}
-                    layout
-                    transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-                    className="relative rounded-2xl overflow-hidden"
-                    style={{
-                      background: active ? `${y.color}10` : 'transparent',
-                      boxShadow: active ? `inset 0 0 0 1px ${y.color}35` : 'inset 0 0 0 1px var(--hair)',
-                    }}
-                  >
-                    <button
-                      onClick={() => selectYear(i)}
-                      className="w-full flex items-center gap-4 px-4 py-3 border-0 bg-transparent cursor-pointer text-left"
-                    >
-                      <motion.span layout="position" className="text-2xl" animate={{ scale: active ? 1.15 : 1 }}>{y.emoji}</motion.span>
-                      <span className="flex-1 min-w-0">
-                        <span className="flex items-baseline gap-3">
-                          <span className="font-display italic text-2xl font-black" style={{ color: active ? y.color : 'var(--ink)' }}>{y.year}</span>
-                          <span className="font-mono-custom text-[11px]" style={{ color: 'var(--faint)' }}>{y.total.toLocaleString('en-US')} msgs</span>
-                        </span>
-                        <span className="block text-[13px] truncate" style={{ color: 'var(--sub)' }}>{y.theme}</span>
-                      </span>
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {active && (
-                        <motion.ol
-                          key="chapters"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.35, ease: EASE }}
-                          className="list-none m-0 px-4 pb-3 pt-0 grid grid-cols-2 gap-1"
-                        >
-                          {slides.map((s, si) => {
-                            const on = si === pos.slideIdx;
-                            return (
-                              <li key={s}>
-                                <button
-                                  onClick={() => goTo(si)}
-                                  className="relative w-full text-left px-3 py-1.5 rounded-lg border-0 bg-transparent cursor-pointer text-[12.5px]"
-                                  style={{ color: on ? '#fff' : si < pos.slideIdx ? 'var(--ink)' : 'var(--sub)' }}
-                                >
-                                  {on && (
-                                    <motion.span
-                                      layoutId="chapter-bg"
-                                      className="absolute inset-0 rounded-lg"
-                                      style={{ background: y.color }}
-                                      transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                                    />
-                                  )}
-                                  <span className="relative font-mono-custom text-[10px] mr-2 opacity-60">{String(si + 1).padStart(2, '0')}</span>
-                                  <span className="relative">{SLIDE_LABELS[s]}</span>
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </motion.ol>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
-            </nav>
-          </LayoutGroup>
+        <div className="absolute top-7 left-8 flex items-center gap-2.5" style={{ color: 'var(--accent)' }}>
+          <span>♥</span>
+          <span className="font-mono-custom text-[11px] tracking-[0.3em] uppercase">Enzo &amp; Katy · WhatsApp Wrap</span>
         </div>
+        <div className="absolute bottom-7 left-8 font-mono-custom text-[11px] tracking-[0.08em]" style={{ color: 'var(--sub)' }}>
+          <kbd>←</kbd> <kbd>→</kbd> navegar · <kbd>espacio</kbd> pausar
+        </div>
+      </motion.div>
 
-        {/* ── Story frame ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 30, scale: 0.97 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, margin: '-10%' }}
-          transition={{ duration: 0.7, ease: EASE }}
-          className="relative lg:sticky lg:top-10 scroll-mt-3"
-          id="wrap-story"
-        >
+      {/* ── The story: full-bleed on mobile, a phone-shaped card on desktop ── */}
+      <div className="relative h-full w-full md:grid md:place-items-center md:p-6">
+        <div className="relative h-full w-full md:h-[min(880px,calc(100dvh-48px))] md:w-[clamp(380px,calc((100dvh-48px)*0.5),430px)]">
           <motion.div
-            className="relative w-full rounded-[28px] overflow-hidden h-[min(calc(100svh_-_24px),780px)] min-h-[580px] lg:h-[780px]"
-            animate={{ boxShadow: `0 12px 48px ${current.color}33, 0 2px 12px rgba(45,26,31,0.08)` }}
+            className="relative h-full w-full overflow-hidden md:rounded-[32px]"
+            animate={{ boxShadow: `0 24px 80px ${current.color}40, 0 4px 16px rgba(45,26,31,0.10)` }}
             transition={{ duration: 0.8 }}
           >
             <YearWrap
-              year={current}
+              years={years}
+              yearIndex={pos.yearIdx}
               slides={slides}
               slideIndex={pos.slideIdx}
               direction={pos.dir}
               paused={paused}
+              started={started}
               onNext={next}
               onPrev={prev}
               onGoTo={goTo}
+              onSelectYear={selectYear}
               onTogglePause={togglePause}
             />
           </motion.div>
 
-          {/* Desktop: arrows outside the phone frame */}
+          {/* Desktop: arrows beside the card */}
           {[
-            { label: 'Anterior', onClick: prev, side: '-left-16', glyph: '‹' },
-            { label: 'Siguiente', onClick: next, side: '-right-16', glyph: '›' },
+            { label: 'Anterior', onClick: prev, side: '-left-[72px]', glyph: '‹' },
+            { label: 'Siguiente', onClick: next, side: '-right-[72px]', glyph: '›' },
           ].map((b) => (
             <motion.button
               key={b.label}
@@ -238,13 +140,13 @@ export default function WrapSection({ years }: WrapSectionProps) {
               aria-label={b.label}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.9 }}
-              className={`hidden xl:grid place-items-center absolute top-1/2 -translate-y-1/2 ${b.side} w-11 h-11 rounded-full border-0 cursor-pointer text-2xl`}
-              style={{ background: 'var(--bg-card)', color: 'var(--ink)', boxShadow: 'inset 0 0 0 1px var(--hair), 0 4px 16px rgba(45,26,31,0.08)' }}
+              className={`hidden md:grid place-items-center absolute top-1/2 -translate-y-1/2 ${b.side} w-12 h-12 rounded-full border-0 cursor-pointer text-2xl`}
+              style={{ background: 'rgba(255,248,245,0.85)', color: 'var(--ink)', boxShadow: 'inset 0 0 0 1px var(--hair), 0 4px 16px rgba(45,26,31,0.08)', backdropFilter: 'blur(8px)' }}
             >
               {b.glyph}
             </motion.button>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

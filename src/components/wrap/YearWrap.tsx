@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, animate, motion, useInView, useMotionValue, type AnimationPlaybackControls } from 'motion/react';
+import { AnimatePresence, animate, motion, useInView, useMotionValue, type AnimationPlaybackControls, type MotionValue } from 'motion/react';
 import type { YearStats } from '../../lib/types';
 import { EASE } from '../../lib/anim';
 import WrapSlide from './WrapSlide';
@@ -8,20 +8,25 @@ import YearAmbient from './YearAmbient';
 import { SLIDE_LABELS, type SlideType } from './themes';
 
 interface YearWrapProps {
-  year: YearStats;
+  years: YearStats[];
+  yearIndex: number;
   slides: SlideType[];
   slideIndex: number;
   direction: number;
   paused: boolean;
+  /** False until the intro splash clears: the story waits, then plays from the top. */
+  started: boolean;
   onNext: () => void;
   onPrev: () => void;
   onGoTo: (index: number) => void;
+  onSelectYear: (index: number) => void;
   onTogglePause: () => void;
 }
 
 const SLIDE_SECONDS = 7;
 const HOLD_MS = 180;
 const SWIPE_PX = 48;
+const SPRING = { type: 'spring', stiffness: 380, damping: 36 } as const;
 
 // A shallow "cube" turn between slides, like flipping through stories.
 const slideVariants = {
@@ -41,8 +46,9 @@ function usePageVisible() {
 }
 
 export default function YearWrap({
-  year, slides, slideIndex, direction, paused, onNext, onPrev, onGoTo, onTogglePause,
+  years, yearIndex, slides, slideIndex, direction, paused, started, onNext, onPrev, onGoTo, onSelectYear, onTogglePause,
 }: YearWrapProps) {
+  const year = years[yearIndex];
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { amount: 0.55 });
   const pageVisible = usePageVisible();
@@ -53,7 +59,7 @@ export default function YearWrap({
   const controls = useRef<AnimationPlaybackControls | null>(null);
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
-  const running = inView && pageVisible && !held && !paused;
+  const running = started && inView && pageVisible && !held && !paused;
   const slideKey = `${year.year}-${slideIndex}`;
 
   useEffect(() => {
@@ -75,7 +81,7 @@ export default function YearWrap({
 
   // ── Keyboard, only while the story is on screen ─────────────────────────
   useEffect(() => {
-    if (!inView) return;
+    if (!inView || !started) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') { e.preventDefault(); onNext(); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); onPrev(); }
@@ -83,7 +89,7 @@ export default function YearWrap({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [inView, onNext, onPrev, onTogglePause]);
+  }, [inView, started, onNext, onPrev, onTogglePause]);
 
   // ── Gestures: tap sides, swipe, press-and-hold to pause ─────────────────
   const gesture = useRef<{ x: number; y: number; t: number; timer: number } | null>(null);
@@ -145,54 +151,67 @@ export default function YearWrap({
         </motion.div>
       </AnimatePresence>
 
-      {/* ── Chrome: progress bars + header ── */}
+      {/* ── Chrome: year track + header, over the story ── */}
       <motion.div
-        className="absolute top-0 left-0 right-0 z-30 px-4 pt-4"
+        className="absolute top-0 left-0 right-0 z-30 px-4"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
         animate={{ opacity: held ? 0.25 : 1 }}
         transition={{ duration: 0.2 }}
       >
-        <div className="flex gap-1 mb-3">
-          {slides.map((s, i) => (
-            <button
-              key={`${year.year}-${s}`}
-              onClick={() => onGoTo(i)}
-              aria-label={`Ir a ${SLIDE_LABELS[s]}`}
-              className="relative flex-1 h-[3px] rounded-sm overflow-hidden cursor-pointer border-0 p-0 before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']"
-              style={{ background: 'rgba(45,26,31,0.16)' }}
-            >
-              {i < slideIndex && <span className="absolute inset-0" style={{ background: year.color }} />}
-              {i === slideIndex && (
+        <YearTrack
+          years={years}
+          yearIndex={yearIndex}
+          slides={slides}
+          slideIndex={slideIndex}
+          progress={progress}
+          onGoTo={onGoTo}
+          onSelectYear={onSelectYear}
+        />
+
+        <div className="flex justify-between items-center gap-3 mt-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* the year rolls like an odometer when the chapter changes */}
+            <span className="relative block overflow-hidden h-[34px]" aria-live="polite">
+              <AnimatePresence initial={false} mode="popLayout" custom={direction}>
                 <motion.span
-                  className="absolute inset-0 origin-left"
-                  style={{ background: year.color, scaleX: progress, boxShadow: `0 0 6px ${year.color}` }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="font-mono-custom text-[10.5px] tracking-[0.2em] uppercase" style={{ color: 'rgba(45,26,31,0.5)' }}>
-            Enzo &amp; Katy · {SLIDE_LABELS[slides[slideIndex]]}
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="font-mono-custom text-[11px] font-semibold" style={{ color: year.color }}>{year.year}</span>
-            <motion.button
-              onClick={onTogglePause}
-              whileTap={{ scale: 0.85 }}
-              aria-label={paused ? 'Reanudar' : 'Pausar'}
-              className="grid place-items-center w-7 h-7 rounded-full border-0 cursor-pointer text-[11px]"
-              style={{ background: 'rgba(45,26,31,0.08)', color: 'var(--ink)' }}
-            >
-              {paused ? '▶' : '❚❚'}
-            </motion.button>
+                  key={year.year}
+                  custom={direction}
+                  className="block font-display italic font-black leading-[34px] text-[32px]"
+                  style={{ color: year.color, letterSpacing: '-0.02em' }}
+                  initial={{ y: direction > 0 ? '100%' : '-100%', opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: direction > 0 ? '-100%' : '100%', opacity: 0 }}
+                  transition={{ duration: 0.5, ease: EASE }}
+                >
+                  {year.year}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+            <span className="min-w-0 leading-tight">
+              <span className="block text-[12px] font-semibold truncate" style={{ color: 'var(--ink)' }}>
+                {year.emoji} {chapterTitle(year)}
+              </span>
+              <span className="block font-mono-custom text-[10px] tracking-[0.16em] uppercase truncate" style={{ color: 'rgba(45,26,31,0.5)' }}>
+                {SLIDE_LABELS[slides[slideIndex]]} · {slideIndex + 1}/{slides.length}
+              </span>
+            </span>
           </div>
+          <motion.button
+            onClick={onTogglePause}
+            whileTap={{ scale: 0.85 }}
+            aria-label={paused ? 'Reanudar' : 'Pausar'}
+            className="shrink-0 grid place-items-center w-8 h-8 rounded-full border-0 cursor-pointer text-[11px]"
+            style={{ background: 'rgba(45,26,31,0.08)', color: 'var(--ink)' }}
+          >
+            {paused ? '▶' : '❚❚'}
+          </motion.button>
         </div>
       </motion.div>
 
       {/* ── Slides ── */}
       <div
         className="absolute inset-0 z-10"
-        style={{ perspective: 1200, touchAction: 'pan-y' }}
+        style={{ perspective: 1200, touchAction: 'none' }}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={endGesture}
@@ -207,10 +226,14 @@ export default function YearWrap({
             initial="enter"
             animate="center"
             exit="exit"
-            className="absolute inset-0 flex flex-col px-6 pt-[78px] pb-10"
-            style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
+            className="absolute inset-0 flex flex-col px-6"
+            style={{
+              transformStyle: 'preserve-3d', backfaceVisibility: 'hidden',
+              paddingTop: 'calc(env(safe-area-inset-top) + 108px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 40px)',
+            }}
           >
-            <WrapSlide type={slides[slideIndex]} data={year} />
+            {started && <WrapSlide type={slides[slideIndex]} data={year} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -219,7 +242,7 @@ export default function YearWrap({
       <AnimatePresence>
         {(held || paused) && (
           <motion.div
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 font-mono-custom text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 rounded-full pointer-events-none"
+            className="absolute bottom-[calc(env(safe-area-inset-bottom)+16px)] left-1/2 -translate-x-1/2 z-30 font-mono-custom text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 rounded-full pointer-events-none"
             style={{ background: 'rgba(45,26,31,0.75)', color: '#fff' }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -230,5 +253,101 @@ export default function YearWrap({
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+/** "El año récord — su conversación…" → "El año récord" */
+function chapterTitle(y: YearStats) {
+  return y.theme.split(' — ')[0];
+}
+
+interface YearTrackProps {
+  years: YearStats[];
+  yearIndex: number;
+  slides: SlideType[];
+  slideIndex: number;
+  progress: MotionValue<number>;
+  onGoTo: (index: number) => void;
+  onSelectYear: (index: number) => void;
+}
+
+/**
+ * The whole journey in one row: every year is a segment, and the current one
+ * widens and splits into its slides. It says at a glance which year these
+ * stats belong to, how far into it you are, and what's left.
+ */
+function YearTrack({ years, yearIndex, slides, slideIndex, progress, onGoTo, onSelectYear }: YearTrackProps) {
+  return (
+    <div className="year-track flex gap-1.5" role="tablist" aria-label="Años">
+      {years.map((y, i) => {
+        const active = i === yearIndex;
+        const past = i < yearIndex;
+        const label = (
+          <span
+            className="block font-mono-custom text-[10.5px] leading-none mb-1.5 truncate transition-colors duration-300"
+            style={{ color: active ? y.color : past ? 'rgba(45,26,31,0.55)' : 'rgba(45,26,31,0.35)', fontWeight: active ? 700 : 500 }}
+          >
+            {y.year}
+          </span>
+        );
+        return (
+          <motion.div
+            key={y.year}
+            className="min-w-0"
+            style={{ flexBasis: 0 }}
+            initial={false}
+            animate={{ flexGrow: active ? 4.5 : 1 }}
+            transition={SPRING}
+          >
+            {active ? (
+              <>
+                <button
+                  role="tab"
+                  aria-selected
+                  onClick={() => onGoTo(0)}
+                  aria-label={`${y.year}, desde el inicio`}
+                  className="block w-full text-left border-0 bg-transparent p-0 cursor-pointer"
+                >
+                  {label}
+                </button>
+                <div className="flex gap-[3px]">
+                  {slides.map((s, si) => (
+                    <button
+                      key={s}
+                      onClick={() => onGoTo(si)}
+                      aria-label={`Ir a ${SLIDE_LABELS[s]}`}
+                      className="relative flex-1 h-[3px] rounded-sm overflow-hidden cursor-pointer border-0 p-0 before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']"
+                      style={{ background: 'rgba(45,26,31,0.16)' }}
+                    >
+                      {si < slideIndex && <span className="absolute inset-0" style={{ background: y.color }} />}
+                      {si === slideIndex && (
+                        <motion.span
+                          className="absolute inset-0 origin-left"
+                          style={{ background: y.color, scaleX: progress, boxShadow: `0 0 6px ${y.color}` }}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <button
+                role="tab"
+                aria-selected={false}
+                onClick={() => onSelectYear(i)}
+                aria-label={`Ir a ${y.year}`}
+                className="block w-full text-left border-0 bg-transparent p-0 cursor-pointer relative before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']"
+              >
+                {label}
+                <span
+                  className="block h-[3px] rounded-sm transition-colors duration-300"
+                  style={{ background: past ? `${y.color}99` : 'rgba(45,26,31,0.16)' }}
+                />
+              </button>
+            )}
+          </motion.div>
+        );
+      })}
+    </div>
   );
 }

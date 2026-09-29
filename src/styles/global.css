@@ -45,6 +45,10 @@ body {
   0%, 100% { transform: scale(1); }
   50%       { transform: scale(1.12); }
 }
+@keyframes ekGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212,104,122,0.45); }
+  50%       { box-shadow: 0 0 0 10px rgba(212,104,122,0); }
+}
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
@@ -67,6 +71,18 @@ body {
   .animate-float, .animate-bob, .animate-pulse-heart { animation: none; }
   html { scroll-behavior: auto; }
 }
+
+/* Intro splash: its server HTML stays hidden when navigating back to the wrap
+   (it only shows on full page loads); locks scroll while open. */
+.intro-seen .intro-splash:not(.is-leaving) { display: none; }
+.intro-open body { overflow: hidden; }
+
+/* Year track: a soft focus ring instead of the browser's box. */
+.year-track button:focus { outline: none; }
+.year-track button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
+
+/* The wrap is a full-screen stage: no page scroll, no pull-to-refresh. */
+html:has(.wrap-stage), html:has(.wrap-stage) body { overflow: hidden; overscroll-behavior: none; }
 
 /* ── Scrollbar hide ───────────────────────────────────────────── */
 ::-webkit-scrollbar { display: none; }
