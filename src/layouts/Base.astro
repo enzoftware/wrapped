@@ -9,21 +9,44 @@ interface Props {
 }
 
 const { title, description = 'Seis años de conversación. Su historia en números.' } = Astro.props;
+
+// Link previews (WhatsApp, iMessage, X…) stay spoiler-free: just us and the
+// anniversary, never the wrap's years or numbers.
+const previewTitle = 'Enzo & Katy';
+const previewDescription = 'Algo especial por nuestro 2 de octubre.';
+const previewImage = new URL('/og-image.png', Astro.site);
+const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 
 <html lang="es">
   <head>
     <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#fdf6f0" />
     <script is:inline>document.documentElement.classList.add('js');</script>
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <link rel="canonical" href={canonical} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={previewTitle} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={previewTitle} />
+    <meta property="og:description" content={previewDescription} />
+    <meta property="og:image" content={previewImage} />
+    <meta property="og:image:secure_url" content={previewImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Una hoja de calendario en el 2 de octubre con «Enzo ♥ Katy»." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={previewTitle} />
+    <meta name="twitter:description" content={previewDescription} />
+    <meta name="twitter:image" content={previewImage} />
+    <meta name="twitter:image:alt" content="Una hoja de calendario en el 2 de octubre con «Enzo ♥ Katy»." />
     <ClientRouter />
   </head>
   <body>
