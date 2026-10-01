@@ -23,7 +23,7 @@ export function getSlides(isLast: boolean): SlideType[] {
 export type YearTheme = 'petals' | 'embers' | 'stars' | 'hearts' | 'signal' | 'leaves';
 
 const THEME_BY_EMOJI: Record<string, YearTheme> = {
-  '🌹': 'petals',  // 2020 — el inicio
+  '🌹': 'petals',  // 2020 — el chat más antiguo
   '🔥': 'embers',  // 2022 — volvieron con todo
   '🚀': 'stars',   // 2023 — año récord
   '💕': 'hearts',  // 2024 — equilibrio

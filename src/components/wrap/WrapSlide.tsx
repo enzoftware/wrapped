@@ -578,7 +578,7 @@ function ClosingSlide({ y }: { y: YearStats }) {
         desde el {g.startDate}
       </div>
       <p className="rv pre-anim" style={{ marginTop: 36, fontSize: 15, fontStyle: 'italic', maxWidth: 240, color: INK }}>
-        6 años. Cada día, sin falta. ♥
+        11 años. Cada día, sin falta. ♥
       </p>
       <div className="rv pre-anim" style={{ display: 'flex', gap: 6, marginTop: 18 }}>
         {yearStats.map((ys) => <span key={ys.year} title={String(ys.year)} style={{ fontSize: 18 }}>{ys.emoji}</span>)}
