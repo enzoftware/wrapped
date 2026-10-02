@@ -58,8 +58,8 @@ export default function IntroSplash() {
   const dismiss = (withMusic: boolean) => {
     if (leaving.current) return;
     leaving.current = true;
-    // Call play synchronously inside the gesture — before any await or animation.
-    if (withMusic) void startMusic();
+    // Open the playlist panel; the visitor starts the music from there.
+    if (withMusic) startMusic();
 
     const el = root.current;
     const finish = () => {
