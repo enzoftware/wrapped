@@ -93,7 +93,7 @@ export default function GeneralStats({ global, years }: GeneralStatsProps) {
         {/* ── 2.3  Topics ──────────────────────────────────────── */}
         <Panel>
           <motion.div {...fadeUp(0)}><Kicker>De qué hablaron</Kicker></motion.div>
-          <PanelTitle>Los temas de 6 años</PanelTitle>
+          <PanelTitle>Los temas de 11 años</PanelTitle>
           <TopicsChart topics={global.topTopics.slice(0, 8)} />
         </Panel>
 
@@ -160,7 +160,7 @@ function Intro({ global }: { global: GlobalStats }) {
           className="intro-title pre-anim font-display italic text-[50px] lg:text-[76px]"
           style={{ fontWeight: 900, margin: '16px 0 0', lineHeight: 0.96, color: 'var(--ink)' }}
         >
-          6 años.<br />
+          11 años.<br />
           <span style={{ color: 'var(--accent)' }}>Una</span><br />
           conversación.
         </h2>
@@ -177,7 +177,7 @@ function Intro({ global }: { global: GlobalStats }) {
         </motion.div>
 
         <motion.div {...fadeUp(0.35)} style={{ display: 'flex', gap: 14, marginTop: 24 }}>
-          {[{ n: global.totalDays, l: 'días en total' }, { n: global.activeDays, l: 'días con mensajes' }].map(({ n, l }) => (
+          {[{ n: global.totalDays, l: 'días juntos' }, { n: global.activeDays, l: 'días con mensajes' }].map(({ n, l }) => (
             <div
               key={l}
               style={{ flex: 1, borderRadius: 20, padding: '18px', background: 'var(--bg-card)', boxShadow: 'inset 0 0 0 1px rgba(45,26,31,0.08)' }}
@@ -274,7 +274,7 @@ function TeAmoBattle({ global }: { global: GlobalStats }) {
 
       <motion.p {...fadeUp(0.4)} style={{ textAlign: 'center', marginTop: 28, fontSize: 14, lineHeight: 1.5, color: 'var(--sub)' }}>
         Enzo lo dijo <b style={{ color: 'var(--ink)' }}>{(enzoTeAmo - katyTeAmo).toLocaleString('en-US')} veces más</b>.<br />
-        Juntos: <b style={{ color: 'var(--accent)' }}>{teAmoTotal.toLocaleString('en-US')} «te amo»</b> en 6 años.
+        Juntos: <b style={{ color: 'var(--accent)' }}>{teAmoTotal.toLocaleString('en-US')} «te amo»</b> en 11 años.
       </motion.p>
 
       {/* Chat bubbles */}

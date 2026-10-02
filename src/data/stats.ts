@@ -1,9 +1,9 @@
 import type { GlobalStats, YearStats } from '../lib/types';
 
 export const globalStats: GlobalStats = {
-  startDate: '18 junio 2020',
-  endDate: '30 mayo 2026',
-  totalDays: 2172,
+  startDate: '2 octubre 2015',
+  endDate: '2 octubre 2026',
+  totalDays: 4018,
   activeDays: 1414,
   totalMessages: 132105,
   enzo: { total: 67659, teAmo: 1869 },
@@ -93,10 +93,10 @@ export const yearStats: YearStats[] = [
     color: '#c0526a',
     grad: ['#fdf0f3', '#fce4ea'],
     emoji: '🌹',
-    theme: 'El inicio — pandemia, encierro y amor a distancia',
+    theme: 'El chat más antiguo — pandemia, encierro y amor a distancia',
     topDay: { date: '22 ago 2020', messages: 392 },
-    highlight: 'Empezaron a escribirse en plena pandemia. Enzo decía «te amo» más que nadie.',
-    funFact: '85 stickers en el primer año — aprendían el lenguaje digital juntos.',
+    highlight: 'Llevaban cinco años juntos cuando empieza este chat: plena pandemia, y Enzo decía «te amo» más que nadie.',
+    funFact: '85 stickers en el primer año del chat — aprendían el lenguaje digital juntos.',
   },
   {
     year: 2022,

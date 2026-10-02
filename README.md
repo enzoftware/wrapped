@@ -1,6 +1,6 @@
-# Enzo & Katy Wrap · 2020–2026
+# Enzo & Katy Wrap · 2015–2026
 
-A personal WhatsApp Wrapped — a Spotify-style web app that visualizes 6 years of conversation between Enzo and Katy (132,105 messages, June 2020–May 2026).
+A personal WhatsApp Wrapped — a Spotify-style web app for Enzo and Katy's 11th anniversary (together since October 2, 2015). The surviving chat export covers June 2020–May 2026 (132,105 messages); the 2015–2020 chats were lost in a phone change.
 
 Live at **https://katyenzo.com**.
 
@@ -117,15 +117,17 @@ A quick way to count any keyword:
 grep -oi "mi vida" data/_chat.txt | wc -l
 ```
 
+`startDate`, `endDate` and `totalDays` in `globalStats` describe the **relationship** (2 octubre 2015 → 2 octubre 2026, 4,018 days), not the chat export. Don't overwrite them with the script's values, which only cover the export's date range.
+
 ### 5. Update hardcoded copy
 
 A few strings mention the date range or totals directly. Find them with:
 
 ```bash
-grep -rnE "2020|2026|6 años|132,105" src README.md
+grep -rnE "2015|2026|11 años|Once años|132,105" src README.md
 ```
 
-Currently: the page title in `src/pages/index.astro`, the intro splash in `src/components/music/IntroSplash.tsx`, "6 años" in `src/components/stats/GeneralStats.tsx` and `src/components/wrap/WrapSlide.tsx`, the message count in `src/pages/stats.astro`, and this README.
+Currently: the page title in `src/pages/index.astro`, the intro splash in `src/components/music/IntroSplash.tsx`, the default description in `src/layouts/Base.astro`, "11 años" in `src/components/stats/GeneralStats.tsx` and `src/components/wrap/WrapSlide.tsx`, the message count in `src/pages/stats.astro`, and this README.
 
 ### 6. Check and ship
 

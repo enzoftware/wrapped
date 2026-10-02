@@ -154,7 +154,7 @@ export default function IntroSplash() {
 
         <div className="is-in pre-anim relative mt-4 flex items-center gap-4 font-mono-custom text-[13px] tracking-[0.12em]" style={{ color: 'var(--sub)' }}>
           <span style={{ width: 22, height: 1, background: 'var(--faint)', display: 'inline-block' }} />
-          2020 — 2026
+          2015 — 2026
           <span style={{ width: 22, height: 1, background: 'var(--faint)', display: 'inline-block' }} />
         </div>
 
@@ -178,7 +178,7 @@ export default function IntroSplash() {
         </div>
 
         <p className="is-in pre-anim mt-6 mb-0 text-sm leading-relaxed max-w-[280px]" style={{ color: 'var(--sub)' }}>
-          🎧 Sube el volumen. Seis años de historia con banda sonora: <b style={{ color: 'var(--ink)' }}>{PLAYLIST.title}</b>.
+          🎧 Sube el volumen. Once años de historia con banda sonora: <b style={{ color: 'var(--ink)' }}>{PLAYLIST.title}</b>.
         </p>
 
         <button
