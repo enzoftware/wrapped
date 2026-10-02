@@ -19,6 +19,8 @@ export function prefersReducedMotion() {
  * only match descendants and every animation is reverted on unmount.
  * Elements are hidden from inside `fn` (never via CSS), so with reduced motion
  * the callback is skipped and content simply renders in its final state.
+ * If `fn` throws (an engine quirk on some device), the animations are undone
+ * and the content is shown unanimated instead of React unmounting the island.
  */
 export function useAnime<T extends HTMLElement = HTMLDivElement>(
   fn: (root: T) => void | (() => void),
@@ -28,7 +30,14 @@ export function useAnime<T extends HTMLElement = HTMLDivElement>(
   useIsoLayoutEffect(() => {
     const el = root.current;
     if (!el || prefersReducedMotion()) return;
-    const scope = createScope({ root: el }).add(() => fn(el));
+    const scope = createScope({ root: el });
+    try {
+      scope.add(() => fn(el));
+    } catch (err) {
+      console.error('[useAnime] animation failed, showing content unanimated:', err);
+      scope.revert();
+      el.classList.add('anim-failed');
+    }
     return () => { scope.revert(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

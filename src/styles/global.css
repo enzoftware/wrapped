@@ -65,6 +65,7 @@ body {
    users skip the animations entirely and always see them. */
 @media (prefers-reduced-motion: no-preference) {
   .js .pre-anim { opacity: 0; }
+  .js .anim-failed .pre-anim, .js .pre-anim.anim-failed { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
