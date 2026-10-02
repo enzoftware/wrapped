@@ -5,32 +5,14 @@ import CountUp from '../CountUp';
 import { globalStats, yearStats } from '../../data/stats';
 import { useAnime } from '../../lib/anim';
 import { themeFor, type SlideType } from './themes';
+import { centered, column, INK, Kicker, MONO, READ_BLUE, revealIn, SUB } from './slideKit';
+import {
+  CalendarSlide, CallsSlide, LaughsSlide, MorningsSlide, NightSlide, ReplySlide, StickersSlide, StreakSlide, WordsSlide, WordStorySlide,
+} from './SignatureSlides';
 
 interface WrapSlideProps {
   type: SlideType;
   data: YearStats;
-}
-
-const MONO = '"Roboto Mono", monospace';
-const INK = 'var(--ink)';
-const SUB = 'var(--sub)';
-const READ_BLUE = '#34B7F1';
-
-const column: React.CSSProperties = { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 };
-const centered: React.CSSProperties = { ...column, alignItems: 'center', justifyContent: 'center', textAlign: 'center' };
-
-function Kicker({ children, color = SUB }: { children: React.ReactNode; color?: string }) {
-  return (
-    <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color }}>
-      {children}
-    </div>
-  );
-}
-
-/** Generic entrance for `.rv` elements; slides layer their thematic motion on top. */
-function revealIn(delay = 0) {
-  utils.set('.rv', { opacity: 0, y: 14 });
-  return animate('.rv', { opacity: 1, y: 0, duration: 700, delay: stagger(110, { start: delay }), ease: 'outExpo' });
 }
 
 export default function WrapSlide({ type, data }: WrapSlideProps) {
@@ -39,7 +21,16 @@ export default function WrapSlide({ type, data }: WrapSlideProps) {
     case 'messages': return <MessagesSlide y={data} />;
     case 'love': return <LoveSlide y={data} />;
     case 'media': return <MediaSlide y={data} />;
-    case 'topics': return <TopicsSlide y={data} />;
+    case 'night': return <NightSlide y={data} />;
+    case 'laughs': return <LaughsSlide y={data} />;
+    case 'reply': return <ReplySlide y={data} />;
+    case 'calendar': return <CalendarSlide y={data} />;
+    case 'mornings': return <MorningsSlide y={data} />;
+    case 'words': return <WordsSlide y={data} />;
+    case 'calls': return <CallsSlide y={data} />;
+    case 'streak': return <StreakSlide y={data} />;
+    case 'stickers': return <StickersSlide y={data} />;
+    case 'wordStory': return <WordStorySlide y={data} />;
     case 'topDay': return <TopDaySlide y={data} />;
     case 'highlight': return <HighlightSlide y={data} />;
     case 'closing': return <ClosingSlide y={data} />;
@@ -339,58 +330,6 @@ function MediaSlide({ y }: { y: YearStats }) {
             {sum.toLocaleString('en-US')} archivos compartidos
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Topics — a leaderboard with a crown for #1 ─────────────────────── */
-
-function TopicsSlide({ y }: { y: YearStats }) {
-  const top5 = globalStats.topTopics.slice(0, 5);
-  const max = top5[0]?.count ?? 1;
-
-  const root = useAnime<HTMLDivElement>(() => {
-    revealIn(0);
-    utils.set('.tp-row', { opacity: 0, x: -30 });
-    utils.set('.tp-bar', { width: '0%' });
-    utils.set('.tp-crown', { opacity: 0, y: -60, rotate: -12 });
-
-    createTimeline({ defaults: { ease: 'outExpo' } })
-      .add('.tp-row', { opacity: 1, x: 0, duration: 800, delay: stagger(110, { reversed: true }) }, 250)
-      .add('.tp-bar', { width: (b?: unknown) => (b as HTMLElement).dataset.w + '%', duration: 1000, delay: stagger(90) }, 700)
-      .add('.tp-crown', { opacity: 1, y: 0, duration: 900, ease: 'outBounce' }, 1300)
-      .add('.tp-row:first-child', { scale: [1, 1.04, 1], duration: 500, ease: 'inOutSine' }, 1700);
-    animate('.tp-crown', { rotate: [-12, -4], duration: 1400, loop: true, alternate: true, ease: 'inOutSine' });
-  }, [y.year]);
-
-  return (
-    <div ref={root} style={column}>
-      <div className="rv pre-anim" style={{ marginTop: 8 }}>
-        <Kicker>De qué hablaron más</Kicker>
-        <h3 className="font-display italic" style={{ fontSize: 28, fontWeight: 700, margin: '6px 0 0', color: INK }}>sus 5 temas</h3>
-      </div>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 18 }}>
-        {top5.map((t, i) => (
-          <div key={t.name} className="tp-row pre-anim" style={{ display: 'flex', alignItems: 'center', gap: 14, transformOrigin: '0% 50%' }}>
-            <div style={{ position: 'relative', width: 34, flexShrink: 0, textAlign: 'center' }}>
-              {i === 0 && <span className="tp-crown" style={{ position: 'absolute', top: -20, left: 6, fontSize: 18 }}>👑</span>}
-              <span className="font-display italic" style={{ fontSize: i === 0 ? 34 : 26, fontWeight: 900, color: i === 0 ? y.color : 'var(--faint)', lineHeight: 1 }}>{i + 1}</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6, gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: i === 0 ? 700 : 500, color: i === 0 ? INK : SUB, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11, color: i === 0 ? y.color : 'var(--faint)' }}>{t.count.toLocaleString('en-US')}</span>
-              </div>
-              <div style={{ height: 8, borderRadius: 5, background: 'rgba(45,26,31,0.08)', overflow: 'hidden' }}>
-                <div className="tp-bar" data-w={((t.count / max) * 100).toFixed(2)} style={{ width: `${(t.count / max) * 100}%`, height: '100%', borderRadius: 5, background: y.color, opacity: 1 - i * 0.14, boxShadow: i === 0 ? `0 0 14px ${y.color}66` : 'none' }} />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontFamily: MONO, fontSize: 10, color: 'var(--faint)', marginTop: 4 }}>
-        * distribución estimada — temas globales
       </div>
     </div>
   );
