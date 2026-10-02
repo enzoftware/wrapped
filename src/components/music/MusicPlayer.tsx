@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { animate, stagger, utils, type JSAnimation } from 'animejs';
 import { EASE, useAnime } from '../../lib/anim';
 import {
-  fetchTrackInfo, isPreviewClip, isWebKitRestricted, loadSpotifyIframeApi, PLAYLIST, SPOTIFY_LOGIN_URL,
+  fetchTrackInfo, isAudible, isPreviewClip, isWebKitRestricted, loadSpotifyIframeApi, PLAYLIST, SPOTIFY_LOGIN_URL,
   type SpotifyEmbedController, type SpotifyPlaybackState, type TrackInfo,
 } from '../../lib/spotify';
 import { onOpenPlayer, registerController, reportPlayback, whenIntroDone } from '../../lib/music';
@@ -61,8 +61,9 @@ export default function MusicPlayer() {
           c.addListener('playback_update', (e) => {
             setPlayback(e.data);
             reportPlayback(e.data);
-            if (!e.data.isPaused && needsTapRef.current) {
-              // They pressed play inside the embed — tuck the panel away and let the wrap continue.
+            if (isAudible(e.data) && needsTapRef.current) {
+              // The music really started (not just the embed's optimistic "playing"
+              // before iOS refuses it) — tuck the panel away and let the wrap continue.
               setNeedsTap(false);
               window.setTimeout(() => setOpen(false), 1400);
             }

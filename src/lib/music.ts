@@ -1,6 +1,6 @@
 // Shared music state across Astro islands (WrapSection, IntroSplash, MusicPlayer are
 // separate React roots, but share this module instance on the page).
-import { isWebKitRestricted, type SpotifyEmbedController, type SpotifyPlaybackState } from './spotify';
+import { isAudible, isWebKitRestricted, type SpotifyEmbedController, type SpotifyPlaybackState } from './spotify';
 
 type StartResult = 'playing' | 'needs-tap';
 
@@ -21,7 +21,7 @@ export function reportPlayback(state: SpotifyPlaybackState) {
   bus.dispatchEvent(new Event('playback'));
 }
 
-const isPlaying = () => !!playback && !playback.isPaused;
+const isPlaying = () => !!playback && isAudible(playback);
 
 function once(event: string, timeoutMs: number, done: () => boolean = () => true) {
   return new Promise<boolean>((resolve) => {
@@ -53,7 +53,7 @@ export async function startMusic(): Promise<StartResult> {
     openPlayer('needs-tap');
     return 'needs-tap';
   }
-  const ok = await once('playback', 2000, isPlaying);
+  const ok = await once('playback', 3000, isPlaying);
   if (!ok) openPlayer('needs-tap');
   return ok ? 'playing' : 'needs-tap';
 }
