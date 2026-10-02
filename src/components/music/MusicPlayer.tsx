@@ -27,6 +27,10 @@ export default function MusicPlayer() {
   const [needsTap, setNeedsTap] = useState(false);
   const [restricted, setRestricted] = useState(false);
   const [track, setTrack] = useState<TrackInfo | null>(null);
+  // Sound really coming out. Not just `!isPaused`: after a refused play() on
+  // iOS the embed can stay on its optimistic "playing" state in silence.
+  const [audible, setAudible] = useState(false);
+  const everAudible = useRef(false);
   const needsTapRef = useRef(false);
   needsTapRef.current = needsTap;
   const awaitingLogin = useRef(false);
@@ -36,7 +40,7 @@ export default function MusicPlayer() {
   const touched = useRef(false);
   const drag = useDragControls();
 
-  const playing = !!playback && !playback.isPaused;
+  const playing = audible;
   const playingRef = useRef(false);
   playingRef.current = playing;
   const preview = !!playback && isPreviewClip(playback.duration);
@@ -61,6 +65,8 @@ export default function MusicPlayer() {
           c.addListener('playback_update', (e) => {
             setPlayback(e.data);
             reportPlayback(e.data);
+            if (isAudible(e.data)) everAudible.current = true;
+            setAudible((was) => !e.data.isPaused && (was || isAudible(e.data)));
             if (isAudible(e.data) && needsTapRef.current) {
               // The music really started (not just the embed's optimistic "playing"
               // before iOS refuses it) — tuck the panel away and let the wrap continue.
@@ -106,8 +112,15 @@ export default function MusicPlayer() {
 
   const togglePlay = useCallback(() => {
     touched.current = true;
+    // iOS only starts audio from a tap inside Spotify's own player; until that
+    // has happened once, point at it instead of sending a play that gets refused.
+    if (restricted && !everAudible.current) {
+      setNeedsTap(true);
+      setOpen(true);
+      return;
+    }
     controller.current?.togglePlay();
-  }, []);
+  }, [restricted]);
 
   const toggleOpen = useCallback(() => {
     touched.current = true;
