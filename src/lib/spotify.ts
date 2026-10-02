@@ -73,6 +73,13 @@ export function isWebKitRestricted() {
   return iOS || desktopSafari;
 }
 
+/**
+ * Sound is really coming out. After `play()` the embed reports "playing" right
+ * away while it buffers — even when iOS then refuses to start the audio and it
+ * flips back to paused — so only trust a state whose position has moved.
+ */
+export const isAudible = (s: SpotifyPlaybackState) => !s.isPaused && !s.isBuffering && s.position > 0;
+
 /** Logged-out (or cookie-blocked) embeds play clips of ≤30 s instead of full tracks. */
 export const isPreviewClip = (durationMs: number) => durationMs > 0 && durationMs <= 31_000;
 
