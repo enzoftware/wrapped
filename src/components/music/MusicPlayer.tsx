@@ -7,7 +7,7 @@ import {
   fetchTrackInfo, isAudible, isPreviewClip, isWebKitRestricted, loadSpotifyIframeApi, PLAYLIST, SPOTIFY_LOGIN_URL,
   type SpotifyEmbedController, type SpotifyPlaybackState, type TrackInfo,
 } from '../../lib/spotify';
-import { onOpenPlayer, registerController, reportPlayback, whenIntroDone } from '../../lib/music';
+import { onOpenPlayer, setPlayerOpen, whenIntroDone } from '../../lib/music';
 
 type Status = 'loading' | 'ready' | 'error';
 
@@ -61,10 +61,9 @@ export default function MusicPlayer() {
         api.createController(host, { uri: PLAYLIST.uri, width: '100%', height: EMBED_HEIGHT }, (c) => {
           if (cancelled) { c.destroy(); return; }
           controller.current = c;
-          c.addListener('ready', () => { setStatus('ready'); registerController(c); });
+          c.addListener('ready', () => setStatus('ready'));
           c.addListener('playback_update', (e) => {
             setPlayback(e.data);
-            reportPlayback(e.data);
             if (isAudible(e.data)) everAudible.current = true;
             setAudible((was) => !e.data.isPaused && (was || isAudible(e.data)));
             if (isAudible(e.data) && needsTapRef.current) {
@@ -82,7 +81,6 @@ export default function MusicPlayer() {
       cancelled = true;
       controller.current?.destroy();
       controller.current = null;
-      registerController(null);
       container.replaceChildren();
     };
   }, []);
@@ -147,6 +145,8 @@ export default function MusicPlayer() {
     return () => { stop(); window.clearTimeout(show); window.clearTimeout(hide); };
   }, []);
 
+  useEffect(() => setPlayerOpen(open), [open]);
+
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
@@ -176,7 +176,7 @@ export default function MusicPlayer() {
   const statusLine =
     status === 'error' ? 'No se pudo cargar Spotify' :
     status === 'loading' ? 'Cargando playlist…' :
-    needsTap ? 'Toca ▶ en Spotify para empezar' :
+    needsTap ? (restricted ? 'Toca ▶ en Spotify para empezar' : 'Toca ▶ para empezar') :
     track ? `${playing ? '♪' : '❚❚'} ${track.title}${preview ? ' · avance' : ''}` :
     playing ? (preview ? 'Sonando · avance de 30 s' : 'Sonando ahora') :
     playback ? 'En pausa' : 'Toca play o elige una canción';

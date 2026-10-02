@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, animate, motion, useInView, useMotionValue, type AnimationPlaybackControls, type MotionValue } from 'motion/react';
 import type { YearStats } from '../../lib/types';
 import { EASE } from '../../lib/anim';
+import { onPlayerOpenChange } from '../../lib/music';
 import WrapSlide from './WrapSlide';
 import YearAmbient from './YearAmbient';
 import { SLIDE_LABELS, type SlideType } from './themes';
@@ -45,6 +46,13 @@ function usePageVisible() {
   return visible;
 }
 
+/** True while the playlist panel is open — the story waits while they pick songs. */
+function usePlayerOpen() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => onPlayerOpenChange(setOpen), []);
+  return open;
+}
+
 export default function YearWrap({
   years, yearIndex, slides, slideIndex, direction, paused, started, onNext, onPrev, onGoTo, onSelectYear, onTogglePause,
 }: YearWrapProps) {
@@ -53,13 +61,14 @@ export default function YearWrap({
   const inView = useInView(rootRef, { amount: 0.55 });
   const pageVisible = usePageVisible();
   const [held, setHeld] = useState(false);
+  const playerOpen = usePlayerOpen();
 
   // ── Autoplay: a motion value drives the active progress bar ────────────
   const progress = useMotionValue(0);
   const controls = useRef<AnimationPlaybackControls | null>(null);
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
-  const running = started && inView && pageVisible && !held && !paused;
+  const running = started && inView && pageVisible && !held && !paused && !playerOpen;
   const slideKey = `${year.year}-${slideIndex}`;
 
   useEffect(() => {
