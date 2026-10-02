@@ -74,8 +74,8 @@ bun scripts/parse-chat.ts > /tmp/stats.json
 
 This prints the countable stats as JSON, in the same shape as `src/data/stats.ts`:
 
-- **`globalStats`** — `startDate`, `endDate`, `totalDays`, `activeDays`, `totalMessages`, per-person totals and «te amo», `teExtrano`, `fotos`, `videos`, `audios`, `stickers`, `llamadas`, `videollamadas`, `hourly`, `mostActiveDay`, `risas`, `mensajesNocturnos`, `dayActivity`.
-- **`yearStats`** — one entry per year with `total`, `enzo`, `katy`, `teAmo`, `teExtrano`, media and call counts, and `topDay`.
+- **`globalStats`** — `startDate`, `endDate`, `totalDays`, `activeDays`, `totalMessages`, per-person totals and «te amo», `teExtrano`, `fotos`, `videos`, `audios`, `stickers`, `llamadas`, `videollamadas`, `hourly`, `mostActiveDay`, `longestStreak`, `risas`, `mensajesNocturnos`, `dayActivity`.
+- **`yearStats`** — one entry per year with `total`, `enzo`, `katy`, `teAmo`, `teExtrano`, media and call counts, `topDay`, and `signals` (what the year's signature slides draw: `activeDays`, `streak`, `hourly`, `monthly`, `risas`, `laughStyles`, `replySeconds`, `buenosDias`, `videoCallsByMonth`, `daily`). Copy `signals` as-is, except `daily` — only keep it for years whose signature includes `calendar`, it's 365 numbers.
 
 How things are counted:
 
@@ -86,6 +86,9 @@ How things are counted:
 | `llamadas` / `videollamadas` | `Voice call` / `Video call` entries (missed calls don't count) |
 | `teAmo`, `teExtrano`, `risas` | Occurrences of `te amo`, `te extraño`, `jajaja…`/`xd` in text messages |
 | `mensajesNocturnos` | Messages sent 12:00–3:59 am |
+| `streak`, `longestStreak` | Longest run of consecutive days with any entry (within the year / across the whole chat) |
+| `replySeconds` | Median gap when the author changes, ignoring gaps over 6 h (a new conversation, not a reply) |
+| `laughStyles` | Occurrences of `jajaja…`, `jejeje…`, `xd`, `jsjs`, `jiji` families in text messages |
 
 > The numbers currently on the site were computed before this script existed with slightly different rules. Re-running it on the same export gives the same media, call and top-day numbers, message totals about 0.6% lower, and fewer «te amo» (2,450 vs 3,292). Once you regenerate, just use the script's numbers everywhere so the site stays consistent.
 
@@ -101,8 +104,29 @@ Copy the numbers from `/tmp/stats.json` into `globalStats` and each `yearStats` 
 | `theme` | One-line subtitle for the year |
 | `highlight` | The "El momento" slide text |
 | `funFact` | A fun fact for the year |
+| `signature` | The year's two signature slides — see below |
 
 The last entry in `yearStats` automatically gets the closing slide.
+
+#### Signature slides
+
+Every year plays `cover → messages → [its two signature slides] → topDay → highlight`. The signature slides are what make each year look different, so pick the two that tell **that** year's story — look at `signals` for what stands out (a record rate per active day is a good sign). Each one is a different chart, in `src/components/wrap/SignatureSlides.tsx` (plus `love` and `media` in `WrapSlide.tsx`):
+
+| Slide | Shows | Good for a year with… |
+|---|---|---|
+| `night` | 24-hour radial clock, share of messages 8 pm–4 am | late-night talking |
+| `laughs` | Their laugh styles + laughs/day across years (🏆 for the record) | the most laughs per day |
+| `reply` | Two stopwatches with each one's median reply time | the fastest replies |
+| `calendar` | Heatmap of every day of the year (needs `signals.daily`) | a full, busy year |
+| `mornings` | Sunrise + one dot per «buenos días» per person | lots of good mornings |
+| `words` | Word cloud (needs hand-written `words`: `{ note, list }`) | words only that year used |
+| `calls` | Video calls per month | calls / distance |
+| `streak` | Ring of `globalStats.longestStreak` | the year the longest streak lives in |
+| `stickers` | Sticker towers, stickers/day across years | the most stickers per day |
+| `wordStory` | One word's use per day across years (needs hand-written `wordStory`) | a word that became theirs |
+| `love`, `media` | The «te amo» heart / media polaroids | — |
+
+For `words`, find candidates by comparing a word's count in that year vs. the rest (`grep -oiw "tesis"` per year), and skip anything private — the site is public.
 
 These `globalStats` fields are **not** computed by the script — update them by hand (or ask Claude to read the chat and count them, using `prompt/wrapped-propmt.md` for context):
 

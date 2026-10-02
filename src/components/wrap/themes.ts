@@ -1,22 +1,35 @@
-import type { YearStats } from '../../lib/types';
+import type { SignatureSlide, YearStats } from '../../lib/types';
 
-export type SlideType = 'cover' | 'messages' | 'love' | 'media' | 'topics' | 'topDay' | 'highlight' | 'closing';
+export type SlideType = 'cover' | 'messages' | SignatureSlide | 'topDay' | 'highlight' | 'closing';
 
 export const SLIDE_LABELS: Record<SlideType, string> = {
   cover: 'Portada',
   messages: 'Mensajes',
+  night: 'De noche',
   love: 'Te amo',
+  laughs: 'Risas',
+  reply: 'Respuestas',
+  calendar: 'Calendario',
   media: 'Multimedia',
-  topics: 'Temas',
+  mornings: 'Buenos días',
+  words: 'Palabras',
+  calls: 'Llamadas',
+  streak: 'La racha',
+  stickers: 'Stickers',
+  wordStory: 'Su palabra',
   topDay: 'Día récord',
   highlight: 'El momento',
   closing: 'Continuará',
 };
 
-/** The final year also gets the closing slide. */
-export function getSlides(isLast: boolean): SlideType[] {
-  const base: SlideType[] = ['cover', 'messages', 'love', 'media', 'topics', 'topDay', 'highlight'];
-  return isLast ? [...base, 'closing'] : base;
+/**
+ * Every year opens and closes the same way, but the middle is its own: two
+ * signature slides that look at what made that year different. The final
+ * year also gets the closing slide.
+ */
+export function getSlides(year: YearStats, isLast: boolean): SlideType[] {
+  const slides: SlideType[] = ['cover', 'messages', ...year.signature, 'topDay', 'highlight'];
+  return isLast ? [...slides, 'closing'] : slides;
 }
 
 // Each year gets its own ambient "weather", matching its emoji and story.

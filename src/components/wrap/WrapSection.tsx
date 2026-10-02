@@ -33,7 +33,7 @@ export default function WrapSection({ years }: WrapSectionProps) {
   const [pos, setPos] = useState<Position>(START);
   const [paused, setPaused] = useState(false);
   const [started, setStarted] = useState(false);
-  const slidesFor = useCallback((i: number) => getSlides(i === years.length - 1), [years.length]);
+  const slidesFor = useCallback((i: number) => getSlides(years[i], i === years.length - 1), [years]);
 
   useLayoutEffect(() => { if (lastPos !== START) setPos(lastPos); }, []);
   useEffect(() => { lastPos = pos; }, [pos]);

@@ -83,6 +83,9 @@ body {
    that 0px box while body is overflow:hidden, so phones saw a blank page. */
 #page { min-height: 100vh; min-height: 100dvh; }
 
+/* Signature slides reach the bottom of the story; on phones keep clear of the floating vinyl. */
+@media (max-width: 767px) { .sig-slide { padding-bottom: 52px; } }
+
 /* Year track: a soft focus ring instead of the browser's box. */
 .year-track button:focus { outline: none; }
 .year-track button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
