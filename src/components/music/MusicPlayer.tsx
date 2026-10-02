@@ -30,7 +30,6 @@ export default function MusicPlayer() {
   // Sound really coming out. Not just `!isPaused`: after a refused play() on
   // iOS the embed can stay on its optimistic "playing" state in silence.
   const [audible, setAudible] = useState(false);
-  const everAudible = useRef(false);
   const needsTapRef = useRef(false);
   needsTapRef.current = needsTap;
   const awaitingLogin = useRef(false);
@@ -64,7 +63,6 @@ export default function MusicPlayer() {
           c.addListener('ready', () => setStatus('ready'));
           c.addListener('playback_update', (e) => {
             setPlayback(e.data);
-            if (isAudible(e.data)) everAudible.current = true;
             setAudible((was) => !e.data.isPaused && (was || isAudible(e.data)));
             if (isAudible(e.data) && needsTapRef.current) {
               // The music really started (not just the embed's optimistic "playing"
@@ -107,18 +105,6 @@ export default function MusicPlayer() {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
-
-  const togglePlay = useCallback(() => {
-    touched.current = true;
-    // iOS only starts audio from a tap inside Spotify's own player; until that
-    // has happened once, point at it instead of sending a play that gets refused.
-    if (restricted && !everAudible.current) {
-      setNeedsTap(true);
-      setOpen(true);
-      return;
-    }
-    controller.current?.togglePlay();
-  }, [restricted]);
 
   const toggleOpen = useCallback(() => {
     touched.current = true;
@@ -176,10 +162,10 @@ export default function MusicPlayer() {
   const statusLine =
     status === 'error' ? 'No se pudo cargar Spotify' :
     status === 'loading' ? 'Cargando playlist…' :
-    needsTap ? (restricted ? 'Toca ▶ en Spotify para empezar' : 'Toca ▶ para empezar') :
+    needsTap ? 'Toca ▶ en Spotify para empezar' :
     track ? `${playing ? '♪' : '❚❚'} ${track.title}${preview ? ' · avance' : ''}` :
     playing ? (preview ? 'Sonando · avance de 30 s' : 'Sonando ahora') :
-    playback ? 'En pausa' : 'Toca play o elige una canción';
+    playback ? 'En pausa' : 'Toca ▶ en Spotify o elige una canción';
 
   return (
     <>
@@ -238,16 +224,6 @@ export default function MusicPlayer() {
             <div className="font-display italic text-xl font-bold leading-tight truncate" style={{ color: 'var(--ink)' }}>{PLAYLIST.title}</div>
             <div className="text-xs truncate" style={{ color: 'var(--sub)' }}>{statusLine}</div>
           </div>
-          <motion.button
-            onClick={togglePlay}
-            disabled={status !== 'ready'}
-            whileTap={{ scale: 0.9 }}
-            aria-label={playing ? 'Pausar' : 'Reproducir'}
-            className="grid place-items-center w-11 h-11 rounded-full border-0 cursor-pointer disabled:opacity-40 text-white"
-            style={{ background: 'linear-gradient(135deg, #e07888, #d4687a)', boxShadow: '0 6px 18px rgba(212,104,122,0.35)' }}
-          >
-            <PlayPauseIcon playing={playing} />
-          </motion.button>
           <button
             ref={closeRef}
             onClick={() => setOpen(false)}
@@ -392,15 +368,5 @@ function FullTracksNote({ preview, restricted, onLogin }: { preview: boolean; re
         </a>
       </div>
     </div>
-  );
-}
-
-function PlayPauseIcon({ playing }: { playing: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-      {playing
-        ? <><rect x="3" y="2" width="3.5" height="12" rx="1" /><rect x="9.5" y="2" width="3.5" height="12" rx="1" /></>
-        : <path d="M4 2.5v11a1 1 0 0 0 1.5.86l9-5.5a1 1 0 0 0 0-1.72l-9-5.5A1 1 0 0 0 4 2.5z" />}
-    </svg>
   );
 }
