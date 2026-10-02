@@ -19,12 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # keep-old-assets rebuilds recent commits
       - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: bun install --frozen-lockfile
       - run: bun run build
+      # Stale cached pages still reference older chunk names; keep serving them.
+      - run: bash scripts/keep-old-assets.sh 10
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
