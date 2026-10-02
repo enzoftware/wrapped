@@ -78,6 +78,11 @@ body {
 .intro-seen .intro-splash:not(.is-leaving) { display: none; }
 .intro-open body { overflow: hidden; }
 
+/* #page carries a view-transition-name and is empty (0px tall) until the wrap
+   starts. iOS WebKit then clips the fixed, backdrop-blurred intro inside it to
+   that 0px box while body is overflow:hidden, so phones saw a blank page. */
+#page { min-height: 100vh; min-height: 100dvh; }
+
 /* Year track: a soft focus ring instead of the browser's box. */
 .year-track button:focus { outline: none; }
 .year-track button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
